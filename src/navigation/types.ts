@@ -1,3 +1,7 @@
+import type { CompositeScreenProps } from '@react-navigation/native';
+import type { NativeStackScreenProps } from '@react-navigation/native-stack';
+import type { BottomTabScreenProps } from '@react-navigation/bottom-tabs';
+
 export type RootStackParamList = {
   Login: undefined;
   MainTabs: undefined;
@@ -11,3 +15,12 @@ export type MainTabParamList = {
   Orders: undefined;
   Settings: undefined;
 };
+
+/**
+ * Composite type for screens inside the tab navigator
+ * that also need access to the parent stack navigator.
+ */
+export type TabScreenProps<T extends keyof MainTabParamList> = CompositeScreenProps<
+  BottomTabScreenProps<MainTabParamList, T>,
+  NativeStackScreenProps<RootStackParamList>
+>;

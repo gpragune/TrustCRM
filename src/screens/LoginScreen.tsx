@@ -1,7 +1,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { Controller, useForm } from 'react-hook-form';
-import { Alert, Pressable, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Alert, Pressable, Text, TextInput, View } from 'react-native';
 import { z } from 'zod';
 import { useAuthStore } from '../store/authStore';
 
@@ -24,16 +24,30 @@ export const LoginScreen = () => {
     defaultValues: { email: '', password: '' }
   });
 
-  const onSubmit = async (values: FormValues) => {
+  const onSubmit = useCallback(
+    async (values: FormValues) => {
+      try {
+        setLoading(true);
+        await login(values.email, values.password);
+      } catch (error) {
+        Alert.alert('Login failed', error instanceof Error ? error.message : 'Unexpected error');
+      } finally {
+        setLoading(false);
+      }
+    },
+    [login]
+  );
+
+  const onDemoLogin = useCallback(async () => {
     try {
       setLoading(true);
-      await login(values.email, values.password);
+      await demoLogin();
     } catch (error) {
-      Alert.alert('Login failed', error instanceof Error ? error.message : 'Unexpected error');
+      Alert.alert('Demo login failed', error instanceof Error ? error.message : 'Unexpected error');
     } finally {
       setLoading(false);
     }
-  };
+  }, [demoLogin]);
 
   return (
     <View className="flex-1 justify-center bg-slate-50 px-6">
@@ -48,9 +62,11 @@ export const LoginScreen = () => {
             autoCapitalize="none"
             keyboardType="email-address"
             placeholder="Email"
+            placeholderTextColor="#94a3b8"
             className="bg-white border border-slate-200 rounded-xl px-4 py-3 mb-2"
             value={value}
             onChangeText={onChange}
+            editable={!loading}
           />
         )}
       />
@@ -63,29 +79,39 @@ export const LoginScreen = () => {
           <TextInput
             secureTextEntry
             placeholder="Password"
+            placeholderTextColor="#94a3b8"
             className="bg-white border border-slate-200 rounded-xl px-4 py-3 mb-2"
             value={value}
             onChangeText={onChange}
+            editable={!loading}
           />
         )}
       />
       {errors.password && <Text className="text-red-500 text-xs mb-4">Password must be at least 6 chars</Text>}
 
-      <Pressable onPress={handleSubmit(onSubmit)} className="bg-blue-600 rounded-xl py-3 items-center mb-3">
-        <Text className="text-white font-semibold">{loading ? 'Logging in...' : 'Login'}</Text>
+      <Pressable
+        onPress={handleSubmit(onSubmit)}
+        disabled={loading}
+        className={`rounded-xl py-3 items-center mb-3 ${loading ? 'bg-blue-400' : 'bg-blue-600'}`}
+      >
+        {loading ? (
+          <ActivityIndicator color="#ffffff" size="small" />
+        ) : (
+          <Text className="text-white font-semibold">Login</Text>
+        )}
       </Pressable>
 
-      <Pressable onPress={() => Alert.alert('Forgot password', 'Reset flow will be connected to API soon.')}>
+      <Pressable
+        onPress={() => Alert.alert('Forgot password', 'Reset flow will be connected to API soon.')}
+        disabled={loading}
+      >
         <Text className="text-center text-blue-600 mb-3">Forgot password</Text>
       </Pressable>
 
       <Pressable
-        onPress={async () => {
-          setLoading(true);
-          await demoLogin();
-          setLoading(false);
-        }}
-        className="border border-slate-300 rounded-xl py-3 items-center"
+        onPress={onDemoLogin}
+        disabled={loading}
+        className={`border rounded-xl py-3 items-center ${loading ? 'border-slate-200' : 'border-slate-300'}`}
       >
         <Text className="text-slate-700 font-semibold">Demo mode</Text>
       </Pressable>

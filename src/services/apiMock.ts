@@ -3,7 +3,8 @@ import { Conversation, Message, Order, OrderItem } from '../types/models';
 
 const wait = (ms = 350) => new Promise((resolve) => setTimeout(resolve, ms));
 
-const conversationsSeed: Conversation[] = [
+/** Mutable seed data — use `let` so mock mutations work correctly. */
+let conversationsSeed: Conversation[] = [
   {
     id: 'c1',
     customerName: 'Nimal Perera',
@@ -57,8 +58,14 @@ let ordersSeed: Order[] = [
   }
 ];
 
+export interface LoginResult {
+  accessToken: string;
+  refreshToken: string;
+  user: { id: string; email: string };
+}
+
 export const apiMock = {
-  async login(email: string, password: string) {
+  async login(email: string, password: string): Promise<LoginResult> {
     await wait();
     if (!email || !password) {
       throw new Error('Email and password are required.');
@@ -70,7 +77,7 @@ export const apiMock = {
     };
   },
 
-  async demoLogin() {
+  async demoLogin(): Promise<LoginResult> {
     await wait(200);
     return {
       accessToken: 'demo_access_token',
@@ -79,19 +86,19 @@ export const apiMock = {
     };
   },
 
-  async fetchConversations() {
+  async fetchConversations(): Promise<Conversation[]> {
     await wait();
     return [...conversationsSeed].sort((a, b) => +new Date(b.lastTimestamp) - +new Date(a.lastTimestamp));
   },
 
-  async fetchMessages(conversationId: string) {
+  async fetchMessages(conversationId: string): Promise<Message[]> {
     await wait();
     return messagesSeed
       .filter((m) => m.conversationId === conversationId)
       .sort((a, b) => +new Date(a.timestamp) - +new Date(b.timestamp));
   },
 
-  async sendMessage(conversationId: string, text: string) {
+  async sendMessage(conversationId: string, text: string): Promise<Message> {
     await wait(150);
     const message: Message = {
       id: `m${Date.now()}`,
@@ -121,7 +128,7 @@ export const apiMock = {
     return items.length ? items : [{ name: 'Manual item', qty: 1, notes: '', price: 0 }];
   },
 
-  async createOrder(payload: Omit<Order, 'id' | 'createdAt' | 'total'>) {
+  async createOrder(payload: Omit<Order, 'id' | 'createdAt' | 'total'>): Promise<Order> {
     await wait(300);
     const total = payload.items.reduce((sum, item) => sum + item.qty * item.price, 0);
     const order: Order = {
@@ -137,14 +144,16 @@ export const apiMock = {
     return order;
   },
 
-  async fetchOrders() {
+  async fetchOrders(): Promise<Order[]> {
     await wait();
     return ordersSeed;
   },
 
-  async updateOrderStatus(orderId: string, status: Order['status']) {
+  async updateOrderStatus(orderId: string, status: Order['status']): Promise<Order> {
     await wait(200);
     ordersSeed = ordersSeed.map((order) => (order.id === orderId ? { ...order, status } : order));
-    return ordersSeed.find((order) => order.id === orderId)!;
+    const found = ordersSeed.find((order) => order.id === orderId);
+    if (!found) throw new Error(`Order ${orderId} not found`);
+    return found;
   }
 };

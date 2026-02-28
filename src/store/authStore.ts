@@ -1,7 +1,6 @@
 import * as SecureStore from 'expo-secure-store';
 import { create } from 'zustand';
-import { apiMock } from '../services/apiMock';
-import { AuthTokens } from '../types/models';
+import { apiMock, LoginResult } from '../services/apiMock';
 
 const ACCESS_KEY = 'chatorder.access';
 const REFRESH_KEY = 'chatorder.refresh';
@@ -17,10 +16,16 @@ interface AuthState {
   logout: () => Promise<void>;
 }
 
-const saveTokens = async (tokens: AuthTokens) => {
-  await SecureStore.setItemAsync(ACCESS_KEY, tokens.accessToken);
-  await SecureStore.setItemAsync(REFRESH_KEY, tokens.refreshToken);
+const saveTokens = async (result: LoginResult) => {
+  await SecureStore.setItemAsync(ACCESS_KEY, result.accessToken);
+  await SecureStore.setItemAsync(REFRESH_KEY, result.refreshToken);
 };
+
+const applyLoginResult = (result: LoginResult) => ({
+  accessToken: result.accessToken,
+  refreshToken: result.refreshToken,
+  userEmail: result.user.email
+});
 
 export const useAuthStore = create<AuthState>((set) => ({
   accessToken: null,
@@ -31,21 +36,26 @@ export const useAuthStore = create<AuthState>((set) => ({
   login: async (email, password) => {
     const result = await apiMock.login(email, password);
     await saveTokens(result);
-    set({ accessToken: result.accessToken, refreshToken: result.refreshToken, userEmail: result.user.email });
+    set(applyLoginResult(result));
   },
 
   demoLogin: async () => {
     const result = await apiMock.demoLogin();
     await saveTokens(result);
-    set({ accessToken: result.accessToken, refreshToken: result.refreshToken, userEmail: result.user.email });
+    set(applyLoginResult(result));
   },
 
   hydrate: async () => {
-    const [accessToken, refreshToken] = await Promise.all([
-      SecureStore.getItemAsync(ACCESS_KEY),
-      SecureStore.getItemAsync(REFRESH_KEY)
-    ]);
-    set({ accessToken, refreshToken, isReady: true });
+    try {
+      const [accessToken, refreshToken] = await Promise.all([
+        SecureStore.getItemAsync(ACCESS_KEY),
+        SecureStore.getItemAsync(REFRESH_KEY)
+      ]);
+      set({ accessToken, refreshToken, isReady: true });
+    } catch {
+      // If secure store fails (e.g. first launch), just mark as ready
+      set({ isReady: true });
+    }
   },
 
   logout: async () => {
